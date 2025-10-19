@@ -1,6 +1,8 @@
 import sys
+import os
 from pathlib import Path
 from PyQt6.QtWidgets import QApplication, QFileDialog, QMessageBox
+from PyQt6.QtGui import QDesktopServices, QIcon
 from PyQt6.QtCore import Qt
 from config import Config
 from database import Database
@@ -44,12 +46,15 @@ def main():
     db_path = config.get_db_path()
     
     if not db_path:
-        db_path = select_db_location()
+        # Criar automaticamente em LocalAppData
+        if sys.platform == 'win32':
+            app_data = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local'))
+        else:
+            app_data = Path.home() / '.local' / 'share'
         
-        if not db_path:
-            QMessageBox.critical(None, "Erro", 
-                               "É necessário selecionar um local para o banco de dados.")
-            sys.exit(1)
+        meta_folder = app_data / 'MetaDeCompra'
+        meta_folder.mkdir(parents=True, exist_ok=True)
+        db_path = str(meta_folder / 'meta_compra.db')
         
         config.set_db_path(db_path)
     
@@ -67,10 +72,22 @@ def main():
         sys.exit(1)
     
     # Carregar estilos
-    style_file = Path(__file__).parent / "styles.qss"
+    if getattr(sys, 'frozen', False):
+        # Rodando como .exe
+        base_path = Path(sys._MEIPASS)
+    else:
+        # Rodando como script
+        base_path = Path(__file__).parent
+    
+    style_file = base_path / "styles.qss"
     if style_file.exists():
         with open(style_file, 'r', encoding='utf-8') as f:
             app.setStyleSheet(f.read())
+
+    # ADICIONAR ESTAS LINHAS
+    icon_file = base_path / "icon.ico"
+    if icon_file.exists():
+        app.setWindowIcon(QIcon(str(icon_file)))
     
     # Criar e exibir janela principal
     window = MainWindow(db, config)
