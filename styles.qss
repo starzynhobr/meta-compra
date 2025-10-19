@@ -1,0 +1,304 @@
+/* Estilo Global */
+QMainWindow {
+    background-color: #1a1a1a;
+}
+
+QWidget#centralWidget {
+    background-color: #1a1a1a;
+}
+
+QWidget#cardsContainer,
+QWidget#flowContainer {
+    background-color: #1a1a1a;
+}
+
+QWidget {
+    color: #e0e0e0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+}
+
+/* Header */
+QFrame#header {
+    background-color: #242424;
+    border-bottom: 1px solid #333;
+}
+
+QLabel#savedAmount {
+    font-size: 18px;
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+QPushButton#editSavedBtn {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 8px 15px;
+    color: #e0e0e0;
+    font-size: 13px;
+}
+
+QPushButton#editSavedBtn:hover {
+    background-color: #333;
+    border-color: #555;
+}
+
+/* Botão Adicionar */
+QPushButton#addButton {
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+QPushButton#addButton:hover {
+    background-color: #45a049;
+}
+
+/* Botão Configurações */
+QPushButton#settingsButton {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 20px;
+    color: #e0e0e0;
+    font-size: 18px;
+    padding: 0px;
+    min-width: 40px;
+    max-width: 40px;
+    min-height: 40px;
+    max-height: 40px;
+}
+
+QPushButton#settingsButton:hover {
+    background-color: #333;
+    border-color: #555;
+}
+
+/* Card do Produto */
+QFrame#productCard {
+    background-color: #242424;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 0;
+}
+
+QFrame#productCard:hover {
+    border-color: #444;
+    background-color: #282828;
+}
+
+QFrame#productCard[purchased="true"] {
+    opacity: 0.5;
+    background-color: #1f1f1f;
+}
+
+/* Check Icon */
+QLabel#checkIcon {
+    background-color: #4CAF50;
+    color: white;
+    border-radius: 15px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* Nome do Produto */
+QLabel#productName {
+    font-size: 14px;
+    font-weight: bold;
+    color: #f0f0f0;
+}
+
+/* Preço do Produto */
+QLabel#productPrice {
+    font-size: 16px;
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+/* Imagem placeholder */
+QLabel#noImage {
+    background-color: #2a2a2a;
+    border: 1px dashed #444;
+    border-radius: 5px;
+    color: #666;
+}
+
+/* Progress Bar */
+QProgressBar {
+    background-color: #2a2a2a;
+    border: none;
+    border-radius: 4px;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background-color: #4CAF50;
+    border-radius: 4px;
+}
+
+/* Botão de Compra */
+QPushButton#buyButton {
+    background-color: #555;
+    border: none;
+    border-radius: 5px;
+    padding: 8px;
+    color: #999;
+    font-size: 12px;
+}
+
+QPushButton#buyButton[enabled="true"] {
+    background-color: #4CAF50;
+    color: white;
+}
+
+QPushButton#buyButton[enabled="true"]:hover {
+    background-color: #45a049;
+}
+
+QPushButton#buyButton:hover {
+    background-color: #666;
+}
+
+/* Botões de Ícone */
+QPushButton#iconButton {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 5px;
+    font-size: 18px;
+    padding: 0px;
+    min-width: 35px;
+    max-width: 35px;
+    min-height: 35px;
+    max-height: 35px;
+}
+
+QPushButton#iconButton:hover {
+    background-color: #333;
+    border-color: #555;
+}
+
+/* Sem Produtos */
+QLabel#noProducts {
+    font-size: 16px;
+    color: #666;
+    padding: 50px;
+}
+
+/* Dialogs */
+QDialog {
+    background-color: #1a1a1a;
+}
+
+QLabel {
+    color: #e0e0e0;
+}
+
+QLineEdit {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 8px;
+    color: #e0e0e0;
+}
+
+QLineEdit:focus {
+    border-color: #4CAF50;
+}
+
+QDoubleSpinBox {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 8px;
+    color: #e0e0e0;
+}
+
+QDoubleSpinBox:focus {
+    border-color: #4CAF50;
+}
+
+QCheckBox {
+    color: #e0e0e0;
+    spacing: 8px;
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #444;
+    border-radius: 3px;
+    background-color: #2a2a2a;
+}
+
+QCheckBox::indicator:checked {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+}
+
+QPushButton {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 5px;
+    padding: 8px 15px;
+    color: #e0e0e0;
+}
+
+QPushButton:hover {
+    background-color: #333;
+    border-color: #555;
+}
+
+QPushButton:pressed {
+    background-color: #1a1a1a;
+}
+
+/* Scroll Area */
+QScrollArea {
+    border: none;
+    background-color: #1a1a1a;
+}
+
+QScrollArea > QWidget {
+    background-color: #1a1a1a;
+}
+
+QScrollBar:vertical {
+    background-color: #1a1a1a;
+    width: 12px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #444;
+    border-radius: 6px;
+    min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #555;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+/* Message Box */
+QMessageBox {
+    background-color: #1a1a1a;
+}
+
+QMessageBox QLabel {
+    color: #e0e0e0;
+}
+
+QMessageBox QPushButton {
+    min-width: 80px;
+}
