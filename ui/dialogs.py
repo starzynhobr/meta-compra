@@ -260,7 +260,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Configurações")
         self.setModal(True)
-        self.setFixedSize(450, 200)
+        self.setFixedSize(450, 230)
         
         self.config = config
         self.setup_ui()
@@ -284,9 +284,19 @@ class SettingsDialog(QDialog):
         
         change_db_btn = QPushButton("Alterar Local")
         change_db_btn.clicked.connect(self.change_db_location)
-        
+
+        import_db_btn = QPushButton("Importar Banco Existente")
+        import_db_btn.clicked.connect(self.import_db)
+
         db_layout.addWidget(self.db_path_label, 3)
-        db_layout.addWidget(change_db_btn, 1)
+
+        # Layout para os dois botões
+        db_buttons_layout = QVBoxLayout()
+        db_buttons_layout.setSpacing(5)
+        db_buttons_layout.addWidget(change_db_btn)
+        db_buttons_layout.addWidget(import_db_btn)
+
+        db_layout.addLayout(db_buttons_layout, 1)
         
         layout.addLayout(db_layout)
         
@@ -315,7 +325,16 @@ class SettingsDialog(QDialog):
             if not file_path.endswith('.db'):
                 file_path += '.db'
             self.db_path_label.setText(file_path)
-    
+
+    def import_db(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Selecionar Banco de Dados Existente",
+            "", "Banco de Dados (*.db)"
+        )
+        
+        if file_path:
+            self.db_path_label.setText(file_path)
+
     def save_settings(self):
         self.config.set_show_purchased(self.show_purchased_check.isChecked())
         
