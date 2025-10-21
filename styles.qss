@@ -15,7 +15,7 @@ QWidget#flowContainer {
 QWidget {
     color: #e0e0e0;
     font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 /* Header */
@@ -25,9 +25,15 @@ QFrame#header {
 }
 
 QLabel#savedAmount {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: bold;
     color: #4CAF50;
+}
+
+QLabel#salaryAmount {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2196F3;
 }
 
 /* Footer */
@@ -37,9 +43,22 @@ QFrame#footer {
 }
 
 QLabel#billsTotal {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: bold;
     color: #FF9800;
+}
+
+QLabel#balanceAmount {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QLabel#balanceAmount[positive="true"] {
+    color: #4CAF50;
+}
+
+QLabel#balanceAmount[positive="false"] {
+    color: #F44336;
 }
 
 QPushButton#editSavedBtn {
@@ -128,7 +147,7 @@ QLabel#typeBadge {
 
 /* Bill Info */
 QLabel#billInfo {
-    font-size: 12px;
+    font-size: 11px;
     color: #999;
 }
 
@@ -143,14 +162,15 @@ QLabel#checkIcon {
 
 /* Nome do Produto */
 QLabel#productName {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: bold;
     color: #f0f0f0;
+    max-height: 40px;
 }
 
 /* Preço do Produto */
 QLabel#productPrice {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     color: #4CAF50;
 }
@@ -382,4 +402,82 @@ QMessageBox QLabel {
 
 QMessageBox QPushButton {
     min-width: 80px;
+}
+
+/* Tab Widget */
+QTabWidget#mainTabs::pane {
+    border: none;
+    background-color: #1a1a1a;
+}
+
+QTabWidget#mainTabs::tab-bar {
+    alignment: center;
+}
+
+QTabBar::tab {
+    background-color: #2a2a2a;
+    color: #999;
+    padding: 12px 30px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+QTabBar::tab:selected {
+    color: #e0e0e0;
+    background-color: #1a1a1a;
+    border-bottom: 2px solid #4CAF50;
+}
+
+QTabBar::tab:hover:!selected {
+    background-color: #333;
+    color: #e0e0e0;
+}
+
+/* Sidebar */
+QFrame#sidebar {
+    background-color: #1f1f1f;
+    border-left: 1px solid #333;
+}
+
+QLabel#sidebarTitle {
+    font-size: 14px;
+    font-weight: bold;
+    color: #e0e0e0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #333;
+}
+
+QFrame#forecastItem {
+    background-color: #2a2a2a;
+    border-radius: 5px;
+    border: 1px solid #333;
+}
+
+QFrame#forecastItem:hover {
+    background-color: #333;
+}
+
+QLabel#forecastMonth {
+    font-size: 11px;
+    font-weight: bold;
+    color: #bbb;
+}
+
+QLabel#forecastValue {
+    font-size: 12px;
+    font-weight: bold;
+    color: #FF9800;
+}
+
+QLabel#forecastValue[zero="true"] {
+    color: #666;
+    text-decoration: line-through;
+}
+
+QLabel#noForecast {
+    font-size: 11px;
+    color: #666;
+    padding: 20px;
 }

@@ -1,115 +1,165 @@
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QFileDialog, QMessageBox,
                              QCheckBox, QDoubleSpinBox, QComboBox, QSpinBox,
-                             QTextEdit, QWidget)
-from PyQt6.QtCore import Qt
+                             QTextEdit, QWidget, QScrollArea, QGraphicsOpacityEffect)
+from PyQt6.QtCore import Qt, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QPixmap
 
-class AddProductDialog(QDialog):
+
+class AnimatedDialog(QDialog):
+    """Dialog base com animação fade in"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Criar efeito de opacidade
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.opacity_effect)
+
+        # Animação fade in
+        self.fade_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_animation.setDuration(200)
+        self.fade_animation.setStartValue(0.0)
+        self.fade_animation.setEndValue(1.0)
+        self.fade_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+    def showEvent(self, event):
+        """Iniciar animação quando o dialog for mostrado"""
+        super().showEvent(event)
+        self.fade_animation.start()
+
+class AddProductDialog(AnimatedDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Adicionar Item")
         self.setModal(True)
-        self.setMinimumSize(400, 500)
+        self.setFixedSize(450, 600)
 
         self.image_path = None
         self.setup_ui()
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
+        # Layout principal do dialog
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Scroll Area para os campos
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll_area.setStyleSheet("QScrollArea { background-color: #1a1a1a; border: none; }")
+
+        # Widget container para os campos
+        form_widget = QWidget()
+        form_widget.setStyleSheet("QWidget { background-color: #1a1a1a; }")
+        form_layout = QVBoxLayout(form_widget)
+        form_layout.setSpacing(15)
+        form_layout.setContentsMargins(20, 20, 20, 20)
 
         # Tipo (Meta ou Conta)
-        layout.addWidget(QLabel("Tipo:"))
+        form_layout.addWidget(QLabel("Tipo:"))
         self.type_combo = QComboBox()
         self.type_combo.addItems(["Meta de Compra", "Conta do Mês"])
         self.type_combo.currentIndexChanged.connect(self.on_type_changed)
-        layout.addWidget(self.type_combo)
+        form_layout.addWidget(self.type_combo)
 
         # Nome
-        layout.addWidget(QLabel("Nome:"))
+        form_layout.addWidget(QLabel("Nome:"))
         self.name_input = QLineEdit()
-        layout.addWidget(self.name_input)
+        self.name_input.setMinimumHeight(35)
+        form_layout.addWidget(self.name_input)
 
         # Descrição (apenas para contas)
         self.desc_label = QLabel("Descrição:")
-        layout.addWidget(self.desc_label)
+        form_layout.addWidget(self.desc_label)
         self.desc_input = QTextEdit()
-        self.desc_input.setMaximumHeight(80)
+        self.desc_input.setMinimumHeight(100)
+        self.desc_input.setMaximumHeight(120)
         self.desc_input.setPlaceholderText("Descrição da conta (opcional)")
-        layout.addWidget(self.desc_input)
+        form_layout.addWidget(self.desc_input)
 
         # Preço
-        layout.addWidget(QLabel("Valor (R$):"))
+        form_layout.addWidget(QLabel("Valor (R$):"))
         self.price_input = QDoubleSpinBox()
         self.price_input.setMaximum(999999.99)
         self.price_input.setDecimals(2)
         self.price_input.setPrefix("R$ ")
-        layout.addWidget(self.price_input)
+        self.price_input.setMinimumHeight(35)
+        form_layout.addWidget(self.price_input)
 
         # Campos específicos para contas
         self.installments_label = QLabel("Parcelas:")
-        layout.addWidget(self.installments_label)
+        form_layout.addWidget(self.installments_label)
 
-        installments_layout = QHBoxLayout()
         self.installments_input = QSpinBox()
         self.installments_input.setMinimum(1)
         self.installments_input.setMaximum(99)
         self.installments_input.setValue(1)
         self.installments_input.setPrefix("x ")
-        installments_layout.addWidget(self.installments_input)
-        installments_layout.addStretch()
-        layout.addLayout(installments_layout)
+        self.installments_input.setMinimumHeight(35)
+        form_layout.addWidget(self.installments_input)
 
         self.day_label = QLabel("Dia do Pagamento:")
-        layout.addWidget(self.day_label)
+        form_layout.addWidget(self.day_label)
 
-        day_layout = QHBoxLayout()
         self.day_input = QSpinBox()
         self.day_input.setMinimum(1)
         self.day_input.setMaximum(31)
         self.day_input.setValue(1)
-        day_layout.addWidget(self.day_input)
-        day_layout.addStretch()
-        layout.addLayout(day_layout)
+        self.day_input.setMinimumHeight(35)
+        form_layout.addWidget(self.day_input)
 
         # Link
         self.link_label = QLabel("Link:")
-        layout.addWidget(self.link_label)
+        form_layout.addWidget(self.link_label)
         self.link_input = QLineEdit()
         self.link_input.setPlaceholderText("https://...")
-        layout.addWidget(self.link_input)
+        self.link_input.setMinimumHeight(35)
+        form_layout.addWidget(self.link_input)
 
         # Imagem
         self.image_section_label = QLabel("Imagem (opcional):")
-        layout.addWidget(self.image_section_label)
+        form_layout.addWidget(self.image_section_label)
 
         image_layout = QHBoxLayout()
         self.image_label = QLabel("Nenhuma imagem")
-        self.image_label.setFixedSize(100, 100)
+        self.image_label.setFixedSize(120, 120)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet("border: 1px dashed #555; border-radius: 5px;")
 
         image_btn = QPushButton("Selecionar")
+        image_btn.setMinimumHeight(35)
         image_btn.clicked.connect(self.select_image)
 
         image_layout.addWidget(self.image_label)
-        image_layout.addWidget(image_btn)
-        layout.addLayout(image_layout)
+        image_layout.addWidget(image_btn, 1)
+        form_layout.addLayout(image_layout)
 
-        # Botões
-        btn_layout = QHBoxLayout()
+        # Adicionar stretch no final
+        form_layout.addStretch()
+
+        scroll_area.setWidget(form_widget)
+        main_layout.addWidget(scroll_area)
+
+        # Botões fixos na parte inferior
+        btn_container = QWidget()
+        btn_container.setStyleSheet("background-color: #1a1a1a; padding: 10px;")
+        btn_layout = QHBoxLayout(btn_container)
+        btn_layout.setContentsMargins(20, 10, 20, 10)
 
         save_btn = QPushButton("Salvar")
+        save_btn.setMinimumHeight(40)
         save_btn.clicked.connect(self.validate_and_accept)
 
         cancel_btn = QPushButton("Cancelar")
+        cancel_btn.setMinimumHeight(40)
         cancel_btn.clicked.connect(self.reject)
 
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
 
-        layout.addLayout(btn_layout)
+        main_layout.addWidget(btn_container)
 
         # Inicializar estado
         self.on_type_changed(0)
@@ -134,7 +184,6 @@ class AddProductDialog(QDialog):
             self.link_label.setText("Link de Compra:")
             self.image_section_label.setText("Imagem:")
 
-        self.adjustSize()
     
     def select_image(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -175,12 +224,12 @@ class AddProductDialog(QDialog):
         }
 
 
-class EditProductDialog(QDialog):
+class EditProductDialog(AnimatedDialog):
     def __init__(self, product, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Editar Item")
         self.setModal(True)
-        self.setMinimumSize(400, 500)
+        self.setFixedSize(450, 600)
 
         self.product = product
         self.image_path = None
@@ -190,99 +239,128 @@ class EditProductDialog(QDialog):
         self.load_data()
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(15)
+        # Layout principal do dialog
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Scroll Area para os campos
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+        scroll_area.setStyleSheet("QScrollArea { background-color: #1a1a1a; border: none; }")
+
+        # Widget container para os campos
+        form_widget = QWidget()
+        form_widget.setStyleSheet("QWidget { background-color: #1a1a1a; }")
+        form_layout = QVBoxLayout(form_widget)
+        form_layout.setSpacing(15)
+        form_layout.setContentsMargins(20, 20, 20, 20)
 
         # Tipo (Meta ou Conta)
-        layout.addWidget(QLabel("Tipo:"))
+        form_layout.addWidget(QLabel("Tipo:"))
         self.type_combo = QComboBox()
         self.type_combo.addItems(["Meta de Compra", "Conta do Mês"])
         self.type_combo.currentIndexChanged.connect(self.on_type_changed)
-        layout.addWidget(self.type_combo)
+        form_layout.addWidget(self.type_combo)
 
         # Nome
-        layout.addWidget(QLabel("Nome:"))
+        form_layout.addWidget(QLabel("Nome:"))
         self.name_input = QLineEdit()
-        layout.addWidget(self.name_input)
+        self.name_input.setMinimumHeight(35)
+        form_layout.addWidget(self.name_input)
 
         # Descrição (apenas para contas)
         self.desc_label = QLabel("Descrição:")
-        layout.addWidget(self.desc_label)
+        form_layout.addWidget(self.desc_label)
         self.desc_input = QTextEdit()
-        self.desc_input.setMaximumHeight(80)
+        self.desc_input.setMinimumHeight(100)
+        self.desc_input.setMaximumHeight(120)
         self.desc_input.setPlaceholderText("Descrição da conta (opcional)")
-        layout.addWidget(self.desc_input)
+        form_layout.addWidget(self.desc_input)
 
         # Preço
-        layout.addWidget(QLabel("Valor (R$):"))
+        form_layout.addWidget(QLabel("Valor (R$):"))
         self.price_input = QDoubleSpinBox()
         self.price_input.setMaximum(999999.99)
         self.price_input.setDecimals(2)
         self.price_input.setPrefix("R$ ")
-        layout.addWidget(self.price_input)
+        self.price_input.setMinimumHeight(35)
+        form_layout.addWidget(self.price_input)
 
         # Campos específicos para contas
         self.installments_label = QLabel("Parcelas:")
-        layout.addWidget(self.installments_label)
+        form_layout.addWidget(self.installments_label)
 
-        installments_layout = QHBoxLayout()
         self.installments_input = QSpinBox()
         self.installments_input.setMinimum(1)
         self.installments_input.setMaximum(99)
         self.installments_input.setValue(1)
         self.installments_input.setPrefix("x ")
-        installments_layout.addWidget(self.installments_input)
-        installments_layout.addStretch()
-        layout.addLayout(installments_layout)
+        self.installments_input.setMinimumHeight(35)
+        form_layout.addWidget(self.installments_input)
 
         self.day_label = QLabel("Dia do Pagamento:")
-        layout.addWidget(self.day_label)
+        form_layout.addWidget(self.day_label)
 
-        day_layout = QHBoxLayout()
         self.day_input = QSpinBox()
         self.day_input.setMinimum(1)
         self.day_input.setMaximum(31)
         self.day_input.setValue(1)
-        day_layout.addWidget(self.day_input)
-        day_layout.addStretch()
-        layout.addLayout(day_layout)
+        self.day_input.setMinimumHeight(35)
+        form_layout.addWidget(self.day_input)
 
         # Link
         self.link_label = QLabel("Link:")
-        layout.addWidget(self.link_label)
+        form_layout.addWidget(self.link_label)
         self.link_input = QLineEdit()
-        layout.addWidget(self.link_input)
+        self.link_input.setPlaceholderText("https://...")
+        self.link_input.setMinimumHeight(35)
+        form_layout.addWidget(self.link_input)
 
         # Imagem
         self.image_section_label = QLabel("Imagem:")
-        layout.addWidget(self.image_section_label)
+        form_layout.addWidget(self.image_section_label)
 
         image_layout = QHBoxLayout()
         self.image_label = QLabel()
-        self.image_label.setFixedSize(100, 100)
+        self.image_label.setFixedSize(120, 120)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet("border: 1px dashed #555; border-radius: 5px;")
 
         image_btn = QPushButton("Alterar Imagem")
+        image_btn.setMinimumHeight(35)
         image_btn.clicked.connect(self.select_image)
 
         image_layout.addWidget(self.image_label)
-        image_layout.addWidget(image_btn)
-        layout.addLayout(image_layout)
+        image_layout.addWidget(image_btn, 1)
+        form_layout.addLayout(image_layout)
 
-        # Botões
-        btn_layout = QHBoxLayout()
+        # Adicionar stretch no final
+        form_layout.addStretch()
+
+        scroll_area.setWidget(form_widget)
+        main_layout.addWidget(scroll_area)
+
+        # Botões fixos na parte inferior
+        btn_container = QWidget()
+        btn_container.setStyleSheet("background-color: #1a1a1a; padding: 10px;")
+        btn_layout = QHBoxLayout(btn_container)
+        btn_layout.setContentsMargins(20, 10, 20, 10)
 
         save_btn = QPushButton("Salvar")
+        save_btn.setMinimumHeight(40)
         save_btn.clicked.connect(self.validate_and_accept)
 
         cancel_btn = QPushButton("Cancelar")
+        cancel_btn.setMinimumHeight(40)
         cancel_btn.clicked.connect(self.reject)
 
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
 
-        layout.addLayout(btn_layout)
+        main_layout.addWidget(btn_container)
 
     def on_type_changed(self, index):
         """Mostra/esconde campos baseado no tipo selecionado"""
@@ -304,22 +382,26 @@ class EditProductDialog(QDialog):
             self.link_label.setText("Link de Compra:")
             self.image_section_label.setText("Imagem:")
 
-        self.adjustSize()
     
     def load_data(self):
         # Definir tipo
-        item_type = self.product.get('type', 'meta')
+        item_type = self.product['type'] if 'type' in self.product.keys() else 'meta'
         self.type_combo.setCurrentIndex(1 if item_type == 'conta' else 0)
 
         self.name_input.setText(self.product['name'])
         self.price_input.setValue(self.product['price'])
-        self.link_input.setText(self.product.get('link') or '')
+        self.link_input.setText(self.product['link'] if 'link' in self.product.keys() and self.product['link'] else '')
 
         # Campos específicos de conta
         if item_type == 'conta':
-            self.desc_input.setPlainText(self.product.get('description') or '')
-            self.installments_input.setValue(self.product.get('installments') or 1)
-            self.day_input.setValue(self.product.get('installment_day') or 1)
+            desc = self.product['description'] if 'description' in self.product.keys() and self.product['description'] else ''
+            self.desc_input.setPlainText(desc)
+
+            installments = self.product['installments'] if 'installments' in self.product.keys() and self.product['installments'] else 1
+            self.installments_input.setValue(installments)
+
+            day = self.product['installment_day'] if 'installment_day' in self.product.keys() and self.product['installment_day'] else 1
+            self.day_input.setValue(day)
 
         if self.product['image']:
             pixmap = QPixmap()
@@ -371,47 +453,87 @@ class EditProductDialog(QDialog):
         }
 
 
-class EditSavedAmountDialog(QDialog):
+class EditSavedAmountDialog(AnimatedDialog):
     def __init__(self, current_amount, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Editar Valor Guardado")
         self.setModal(True)
         self.setFixedSize(300, 150)
-        
+
         self.current_amount = current_amount
         self.setup_ui()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
-        
+
         layout.addWidget(QLabel("Valor Guardado (R$):"))
-        
+
         self.amount_input = QDoubleSpinBox()
         self.amount_input.setMaximum(9999999.99)
         self.amount_input.setDecimals(2)
         self.amount_input.setPrefix("R$ ")
         self.amount_input.setValue(self.current_amount)
         layout.addWidget(self.amount_input)
-        
+
         btn_layout = QHBoxLayout()
-        
+
         save_btn = QPushButton("Salvar")
         save_btn.clicked.connect(self.accept)
-        
+
         cancel_btn = QPushButton("Cancelar")
         cancel_btn.clicked.connect(self.reject)
-        
+
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        
+
         layout.addLayout(btn_layout)
-    
+
     def get_amount(self):
         return self.amount_input.value()
 
 
-class SettingsDialog(QDialog):
+class EditSalaryDialog(AnimatedDialog):
+    def __init__(self, current_amount, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Editar Salário")
+        self.setModal(True)
+        self.setFixedSize(300, 150)
+
+        self.current_amount = current_amount
+        self.setup_ui()
+
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+
+        layout.addWidget(QLabel("Salário (R$):"))
+
+        self.amount_input = QDoubleSpinBox()
+        self.amount_input.setMaximum(9999999.99)
+        self.amount_input.setDecimals(2)
+        self.amount_input.setPrefix("R$ ")
+        self.amount_input.setValue(self.current_amount)
+        layout.addWidget(self.amount_input)
+
+        btn_layout = QHBoxLayout()
+
+        save_btn = QPushButton("Salvar")
+        save_btn.clicked.connect(self.accept)
+
+        cancel_btn = QPushButton("Cancelar")
+        cancel_btn.clicked.connect(self.reject)
+
+        btn_layout.addWidget(save_btn)
+        btn_layout.addWidget(cancel_btn)
+
+        layout.addLayout(btn_layout)
+
+    def get_amount(self):
+        return self.amount_input.value()
+
+
+class SettingsDialog(AnimatedDialog):
     def __init__(self, config, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Configurações")

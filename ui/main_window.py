@@ -1,9 +1,10 @@
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QLabel, QPushButton, QScrollArea, QMessageBox, QFrame)
-from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+                             QLabel, QPushButton, QScrollArea, QMessageBox, QFrame, QTabWidget,
+                             QGraphicsOpacityEffect)
+from PyQt6.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve, QRect, QPoint
 from PyQt6.QtGui import QDesktopServices
 from ui.card_widget import ProductCard
-from ui.dialogs import AddProductDialog, EditProductDialog, EditSavedAmountDialog, SettingsDialog
+from ui.dialogs import AddProductDialog, EditProductDialog, EditSavedAmountDialog, EditSalaryDialog, SettingsDialog
 from database import Database
 
 
@@ -34,8 +35,8 @@ class MainWindow(QMainWindow):
         self.config = config
         
         self.setWindowTitle("Meta de Compra")
-        self.setMinimumSize(800, 600)
-        self.resize(1200, 800)
+        self.setMinimumSize(1000, 550)
+        self.resize(1400, 750)
         
         self.setup_ui()
         self.load_products()
@@ -53,126 +54,326 @@ class MainWindow(QMainWindow):
         # Header
         header = QFrame()
         header.setObjectName("header")
-        header.setFixedHeight(80)
+        header.setFixedHeight(70)
         
         header_layout = QHBoxLayout(header)
         header_layout.setContentsMargins(30, 0, 30, 0)
         
-        # Valor guardado (esquerda)
-        saved_layout = QHBoxLayout()
+        # Valor guardado e salário (esquerda)
+        values_layout = QHBoxLayout()
+
         self.saved_label = QLabel("Valor Guardado: R$ 0,00")
         self.saved_label.setObjectName("savedAmount")
-        
+
         edit_saved_btn = QPushButton("Editar")
         edit_saved_btn.setObjectName("editSavedBtn")
         edit_saved_btn.clicked.connect(self.edit_saved_amount)
-        
-        saved_layout.addWidget(self.saved_label)
-        saved_layout.addWidget(edit_saved_btn)
-        
-        header_layout.addLayout(saved_layout)
+
+        self.salary_label = QLabel("Salário: R$ 0,00")
+        self.salary_label.setObjectName("salaryAmount")
+
+        edit_salary_btn = QPushButton("Editar")
+        edit_salary_btn.setObjectName("editSavedBtn")
+        edit_salary_btn.clicked.connect(self.edit_salary)
+
+        values_layout.addWidget(self.saved_label)
+        values_layout.addWidget(edit_saved_btn)
+        values_layout.addSpacing(30)
+        values_layout.addWidget(self.salary_label)
+        values_layout.addWidget(edit_salary_btn)
+
+        header_layout.addLayout(values_layout)
         header_layout.addStretch()
         
         # Botões direita
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(10)
-        
+
         add_btn = QPushButton("Adicionar")
         add_btn.setObjectName("addButton")
         add_btn.clicked.connect(self.add_product)
-        
+
+        forecast_btn = QPushButton("📊")
+        forecast_btn.setObjectName("settingsButton")
+        forecast_btn.setFixedSize(40, 40)
+        forecast_btn.setToolTip("Previsão de Parcelas")
+        forecast_btn.clicked.connect(self.toggle_sidebar)
+
         settings_btn = QPushButton("⚙")
         settings_btn.setObjectName("settingsButton")
         settings_btn.setFixedSize(40, 40)
         settings_btn.clicked.connect(self.open_settings)
-        
+
         buttons_layout.addWidget(add_btn)
+        buttons_layout.addWidget(forecast_btn)
         buttons_layout.addWidget(settings_btn)
         
         header_layout.addLayout(buttons_layout)
         
         main_layout.addWidget(header)
-        
-        # Área de scroll para os cards
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        
-        # Container dos cards
-        self.cards_container = QWidget()
-        self.cards_container.setObjectName("cardsContainer")
-        self.cards_layout = QVBoxLayout(self.cards_container)
-        self.cards_layout.setContentsMargins(0, 0, 0, 0)
-        self.cards_layout.setSpacing(0)
-        
-        # Flow container
-        self.flow_container = QWidget()
-        self.flow_container.setObjectName("flowContainer")
-        self.flow_layout = FlowLayout(self.flow_container)
-        
-        self.cards_layout.addWidget(self.flow_container)
-        self.cards_layout.addStretch()
-        
-        scroll_area.setWidget(self.cards_container)
-        main_layout.addWidget(scroll_area)
 
-        # Footer com total de contas
+        # Container principal com sidebar e conteúdo
+        content_container = QWidget()
+        content_layout = QHBoxLayout(content_container)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+
+        # Tabs para separar Metas e Contas
+        self.tabs = QTabWidget()
+        self.tabs.setObjectName("mainTabs")
+
+        # Tab de Metas
+        metas_tab = QWidget()
+        metas_layout = QVBoxLayout(metas_tab)
+        metas_layout.setContentsMargins(0, 0, 0, 0)
+
+        metas_scroll = QScrollArea()
+        metas_scroll.setWidgetResizable(True)
+        metas_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self.metas_container = QWidget()
+        self.metas_container.setObjectName("cardsContainer")
+        metas_container_layout = QVBoxLayout(self.metas_container)
+        metas_container_layout.setContentsMargins(0, 0, 0, 0)
+        metas_container_layout.setSpacing(0)
+
+        self.metas_flow_container = QWidget()
+        self.metas_flow_container.setObjectName("flowContainer")
+        self.metas_flow_layout = FlowLayout(self.metas_flow_container)
+
+        metas_container_layout.addWidget(self.metas_flow_container)
+        metas_container_layout.addStretch()
+
+        metas_scroll.setWidget(self.metas_container)
+        metas_layout.addWidget(metas_scroll)
+
+        # Tab de Contas
+        contas_tab = QWidget()
+        contas_layout = QVBoxLayout(contas_tab)
+        contas_layout.setContentsMargins(0, 0, 0, 0)
+
+        contas_scroll = QScrollArea()
+        contas_scroll.setWidgetResizable(True)
+        contas_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
+        self.contas_container = QWidget()
+        self.contas_container.setObjectName("cardsContainer")
+        contas_container_layout = QVBoxLayout(self.contas_container)
+        contas_container_layout.setContentsMargins(0, 0, 0, 0)
+        contas_container_layout.setSpacing(0)
+
+        self.contas_flow_container = QWidget()
+        self.contas_flow_container.setObjectName("flowContainer")
+        self.contas_flow_layout = FlowLayout(self.contas_flow_container)
+
+        contas_container_layout.addWidget(self.contas_flow_container)
+        contas_container_layout.addStretch()
+
+        contas_scroll.setWidget(self.contas_container)
+        contas_layout.addWidget(contas_scroll)
+
+        # Adicionar tabs
+        self.tabs.addTab(metas_tab, "Metas de Compra")
+        self.tabs.addTab(contas_tab, "Contas do Mês")
+
+        # Adicionar tabs ao container
+        content_layout.addWidget(self.tabs, 3)
+
+        # Sidebar com previsão de parcelas
+        self.sidebar = QFrame()
+        self.sidebar.setObjectName("sidebar")
+        self.sidebar.setFixedWidth(250)
+        self.sidebar.setVisible(False)  # Inicialmente oculta
+
+        sidebar_layout = QVBoxLayout(self.sidebar)
+        sidebar_layout.setContentsMargins(15, 15, 15, 15)
+        sidebar_layout.setSpacing(10)
+
+        sidebar_title = QLabel("Previsão de Parcelas")
+        sidebar_title.setObjectName("sidebarTitle")
+        sidebar_layout.addWidget(sidebar_title)
+
+        # Scroll area para os meses
+        forecast_scroll = QScrollArea()
+        forecast_scroll.setWidgetResizable(True)
+        forecast_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        forecast_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        forecast_scroll.setStyleSheet("QScrollArea { background-color: #1f1f1f; border: none; }")
+
+        self.forecast_container = QWidget()
+        self.forecast_container.setStyleSheet("QWidget { background-color: #1f1f1f; }")
+        self.forecast_layout = QVBoxLayout(self.forecast_container)
+        self.forecast_layout.setSpacing(8)
+        self.forecast_layout.setContentsMargins(0, 0, 0, 0)
+
+        forecast_scroll.setWidget(self.forecast_container)
+        sidebar_layout.addWidget(forecast_scroll)
+
+        content_layout.addWidget(self.sidebar, 1)
+
+        main_layout.addWidget(content_container)
+
+        # Footer com total de contas e saldo
         footer = QFrame()
         footer.setObjectName("footer")
-        footer.setFixedHeight(60)
+        footer.setFixedHeight(50)
 
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(30, 0, 30, 0)
-
-        footer_layout.addStretch()
 
         self.bills_label = QLabel("Contas do Mês: R$ 0,00")
         self.bills_label.setObjectName("billsTotal")
 
         footer_layout.addWidget(self.bills_label)
+        footer_layout.addStretch()
+
+        self.balance_label = QLabel("Saldo: R$ 0,00")
+        self.balance_label.setObjectName("balanceAmount")
+
+        footer_layout.addWidget(self.balance_label)
 
         main_layout.addWidget(footer)
 
         # Atualizar valor guardado
         self.update_saved_label()
-        self.update_bills_label()
-    
+        self.update_salary_label()
+        self.update_bills_and_balance()
+        self.update_forecast()
+
     def update_saved_label(self):
         amount = self.db.get_saved_amount()
         self.saved_label.setText(f"Valor Guardado: R$ {amount:,.2f}")
         return amount
 
-    def update_bills_label(self):
-        total = self.db.get_monthly_bills_total()
-        self.bills_label.setText(f"Contas do Mês: R$ {total:,.2f}")
-        return total
-    
+    def update_salary_label(self):
+        salary = self.db.get_salary()
+        self.salary_label.setText(f"Salário: R$ {salary:,.2f}")
+        return salary
+
+    def update_bills_and_balance(self):
+        bills_total = self.db.get_monthly_bills_total()
+        salary = self.db.get_salary()
+        balance = salary - bills_total
+
+        self.bills_label.setText(f"Contas do Mês: R$ {bills_total:,.2f}")
+
+        # Definir cor do saldo baseado em positivo/negativo
+        if balance >= 0:
+            self.balance_label.setProperty("positive", "true")
+        else:
+            self.balance_label.setProperty("positive", "false")
+
+        self.balance_label.setText(f"Saldo: R$ {balance:,.2f}")
+        self.balance_label.style().unpolish(self.balance_label)
+        self.balance_label.style().polish(self.balance_label)
+
+        return bills_total, balance
+
+    def update_forecast(self):
+        """Atualiza a sidebar com previsão de parcelas"""
+        # Limpar forecast anterior
+        while self.forecast_layout.count():
+            item = self.forecast_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Obter previsão
+        forecast = self.db.get_monthly_forecast()
+
+        if not forecast:
+            no_forecast = QLabel("Nenhuma conta parcelada")
+            no_forecast.setObjectName("noForecast")
+            no_forecast.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.forecast_layout.addWidget(no_forecast)
+            return
+
+        # Criar item para cada mês
+        for month_data in forecast:
+            month_item = QFrame()
+            month_item.setObjectName("forecastItem")
+
+            item_layout = QHBoxLayout(month_item)
+            item_layout.setContentsMargins(10, 8, 10, 8)
+            item_layout.setSpacing(10)
+
+            month_label = QLabel(month_data['month'])
+            month_label.setObjectName("forecastMonth")
+
+            value_label = QLabel(f"R$ {month_data['total']:,.2f}")
+            value_label.setObjectName("forecastValue")
+
+            # Se for zero, marcar diferente
+            if month_data['total'] == 0:
+                value_label.setProperty("zero", "true")
+                value_label.style().unpolish(value_label)
+                value_label.style().polish(value_label)
+
+            item_layout.addWidget(month_label)
+            item_layout.addStretch()
+            item_layout.addWidget(value_label)
+
+            self.forecast_layout.addWidget(month_item)
+
+        self.forecast_layout.addStretch()
+
     def load_products(self):
         # Limpar cards existentes
-        self.flow_layout.clear_layout()
+        self.metas_flow_layout.clear_layout()
+        self.contas_flow_layout.clear_layout()
 
         # Carregar produtos
         show_purchased = self.config.get_show_purchased()
         products = self.db.get_all_products(show_purchased)
         saved_amount = self.update_saved_label()
-        self.update_bills_label()
+        self.update_bills_and_balance()
+        self.update_forecast()
 
+        # Separar metas e contas
+        metas = []
+        contas = []
+        for p in products:
+            if 'type' in p.keys() and p['type'] == 'conta':
+                contas.append(p)
+            else:
+                metas.append(p)
+
+        # Verificar se há produtos
         if not products:
-            no_products = QLabel("Nenhum produto adicionado ainda.\nClique em 'Adicionar' para começar!")
+            no_products = QLabel("Nenhum item adicionado ainda.\nClique em 'Adicionar' para começar!")
             no_products.setObjectName("noProducts")
             no_products.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.cards_layout.insertWidget(0, no_products)
+            self.metas_container.layout().insertWidget(0, no_products)
             return
 
-        # Criar cards
-        for product in products:
-            card = ProductCard(product, saved_amount)
-            card.edit_clicked.connect(self.edit_product)
-            card.remove_clicked.connect(self.remove_product)
-            card.purchase_clicked.connect(self.toggle_purchase)
-            card.link_clicked.connect(self.open_link)
+        # Criar cards de metas
+        if not metas:
+            no_metas = QLabel("Nenhuma meta cadastrada")
+            no_metas.setObjectName("noProducts")
+            no_metas.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.metas_container.layout().insertWidget(0, no_metas)
+        else:
+            for product in metas:
+                card = ProductCard(product, saved_amount)
+                card.edit_clicked.connect(self.edit_product)
+                card.remove_clicked.connect(self.remove_product)
+                card.purchase_clicked.connect(self.toggle_purchase)
+                card.link_clicked.connect(self.open_link)
+                self.metas_flow_layout.addWidget(card)
 
-            self.flow_layout.addWidget(card)
+        # Criar cards de contas
+        if not contas:
+            no_contas = QLabel("Nenhuma conta cadastrada")
+            no_contas.setObjectName("noProducts")
+            no_contas.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.contas_container.layout().insertWidget(0, no_contas)
+        else:
+            for product in contas:
+                card = ProductCard(product, saved_amount)
+                card.edit_clicked.connect(self.edit_product)
+                card.remove_clicked.connect(self.remove_product)
+                card.purchase_clicked.connect(self.toggle_purchase)
+                card.link_clicked.connect(self.open_link)
+                self.contas_flow_layout.addWidget(card)
     
     def add_product(self):
         dialog = AddProductDialog(self)
@@ -248,12 +449,53 @@ class MainWindow(QMainWindow):
     def edit_saved_amount(self):
         current = self.db.get_saved_amount()
         dialog = EditSavedAmountDialog(current, self)
-        
+
         if dialog.exec():
             new_amount = dialog.get_amount()
             self.db.update_saved_amount(new_amount)
             self.load_products()
-    
+
+    def edit_salary(self):
+        current = self.db.get_salary()
+        dialog = EditSalaryDialog(current, self)
+
+        if dialog.exec():
+            new_salary = dialog.get_amount()
+            self.db.update_salary(new_salary)
+            self.update_salary_label()
+            self.update_bills_and_balance()
+
+    def toggle_sidebar(self):
+        """Mostra/oculta a sidebar de previsão com animação"""
+        is_visible = self.sidebar.isVisible()
+
+        if not is_visible:
+            # Mostrar sidebar
+            self.sidebar.setVisible(True)
+
+            # Animação de fade in
+            self.sidebar_opacity = QGraphicsOpacityEffect(self.sidebar)
+            self.sidebar.setGraphicsEffect(self.sidebar_opacity)
+
+            self.sidebar_fade = QPropertyAnimation(self.sidebar_opacity, b"opacity")
+            self.sidebar_fade.setDuration(300)
+            self.sidebar_fade.setStartValue(0.0)
+            self.sidebar_fade.setEndValue(1.0)
+            self.sidebar_fade.setEasingCurve(QEasingCurve.Type.OutCubic)
+            self.sidebar_fade.start()
+        else:
+            # Ocultar sidebar
+            self.sidebar_opacity = QGraphicsOpacityEffect(self.sidebar)
+            self.sidebar.setGraphicsEffect(self.sidebar_opacity)
+
+            self.sidebar_fade = QPropertyAnimation(self.sidebar_opacity, b"opacity")
+            self.sidebar_fade.setDuration(200)
+            self.sidebar_fade.setStartValue(1.0)
+            self.sidebar_fade.setEndValue(0.0)
+            self.sidebar_fade.setEasingCurve(QEasingCurve.Type.InCubic)
+            self.sidebar_fade.finished.connect(lambda: self.sidebar.setVisible(False))
+            self.sidebar_fade.start()
+
     def open_settings(self):
         dialog = SettingsDialog(self.config, self)
         if dialog.exec():

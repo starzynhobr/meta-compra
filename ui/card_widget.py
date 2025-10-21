@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QProgressBar
+from PyQt6.QtWidgets import QFrame, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QProgressBar, QGraphicsOpacityEffect
 from PyQt6.QtCore import Qt, QSize, pyqtSignal, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QPixmap, QIcon
 import io
@@ -14,10 +14,12 @@ class ProductCard(QFrame):
         self.product = product
         self.saved_amount = saved_amount
         self.is_purchased = bool(product['purchased'])
-        self.is_conta = product.get('type', 'meta') == 'conta'
+        self.is_conta = product['type'] == 'conta' if 'type' in product.keys() else False
 
         self.setObjectName("productCard")
-        self.setFixedSize(280, 380)
+        # Cards de conta precisam ser um pouco mais altos por causa do badge e info de vencimento
+        height = 310 if self.is_conta else 290
+        self.setFixedSize(200, height)
 
         self.setup_ui()
         self.setup_animations()
@@ -34,25 +36,25 @@ class ProductCard(QFrame):
     
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(15, 15, 15, 15)
-        layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
         
         # Container para imagem com check
         image_container = QFrame()
-        image_container.setFixedSize(250, 200)
+        image_container.setFixedSize(170, 140)
         image_layout = QVBoxLayout(image_container)
         image_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Imagem
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_label.setFixedSize(250, 200)
+        self.image_label.setFixedSize(170, 140)
         self.image_label.setScaledContents(False)
-        
+
         if self.product['image']:
             pixmap = QPixmap()
             pixmap.loadFromData(self.product['image'])
-            scaled_pixmap = pixmap.scaled(250, 200, Qt.AspectRatioMode.KeepAspectRatio, 
+            scaled_pixmap = pixmap.scaled(170, 140, Qt.AspectRatioMode.KeepAspectRatio,
                                          Qt.TransformationMode.SmoothTransformation)
             self.image_label.setPixmap(scaled_pixmap)
         else:
@@ -87,8 +89,9 @@ class ProductCard(QFrame):
         layout.addWidget(name_label)
 
         # Valor
-        if self.is_conta and self.product.get('installments') and self.product.get('installments') > 1:
-            value_text = f"R$ {self.product['price']:,.2f} ({self.product['installments']}x)"
+        installments = self.product['installments'] if 'installments' in self.product.keys() else None
+        if self.is_conta and installments and installments > 1:
+            value_text = f"R$ {self.product['price']:,.2f} ({installments}x)"
         else:
             value_text = f"R$ {self.product['price']:,.2f}"
 
@@ -98,7 +101,7 @@ class ProductCard(QFrame):
 
         # Informação adicional para contas
         if self.is_conta:
-            day = self.product.get('installment_day', 1)
+            day = self.product['installment_day'] if 'installment_day' in self.product.keys() and self.product['installment_day'] else 1
             info_label = QLabel(f"Vencimento: dia {day}")
             info_label.setObjectName("billInfo")
             layout.addWidget(info_label)
@@ -126,14 +129,15 @@ class ProductCard(QFrame):
         # Botão de compra/link
         if self.is_conta:
             # Para contas, apenas abrir link se houver
-            self.buy_btn = QPushButton("Ver Link")
+            has_link = 'link' in self.product.keys() and self.product['link']
+            self.buy_btn = QPushButton("Link")
             self.buy_btn.setObjectName("buyButton")
-            self.buy_btn.setProperty("enabled", "true" if self.product.get('link') else "false")
+            self.buy_btn.setProperty("enabled", "true" if has_link else "false")
             self.buy_btn.clicked.connect(lambda: self.link_clicked.emit(self.product['link']))
         else:
             # Para metas, mostrar se pode comprar
             can_buy = self.saved_amount >= self.product['price']
-            self.buy_btn = QPushButton("Link de Compra")
+            self.buy_btn = QPushButton("Comprar")
             self.buy_btn.setObjectName("buyButton")
             self.buy_btn.setProperty("enabled", "true" if can_buy else "false")
             self.buy_btn.clicked.connect(lambda: self.link_clicked.emit(self.product['link']))
@@ -172,7 +176,19 @@ class ProductCard(QFrame):
         layout.addLayout(btn_layout)
     
     def setup_animations(self):
-        self.opacity_effect = None
+        # Criar efeito de opacidade
+        self.opacity_effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.opacity_effect)
+
+        # Animação fade in
+        self.fade_in = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.fade_in.setDuration(400)
+        self.fade_in.setStartValue(0.0)
+        self.fade_in.setEndValue(1.0)
+        self.fade_in.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+        # Iniciar animação
+        self.fade_in.start()
         
     def update_saved_amount(self, new_amount):
         self.saved_amount = new_amount

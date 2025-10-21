@@ -35,11 +35,12 @@ class Database:
             )
         ''')
         
-        # Tabela de configurações (valor guardado)
+        # Tabela de configurações (valor guardado e salário)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS settings (
                 id INTEGER PRIMARY KEY,
-                saved_amount REAL DEFAULT 0
+                saved_amount REAL DEFAULT 0,
+                salary REAL DEFAULT 0
             )
         ''')
         
@@ -56,7 +57,7 @@ class Database:
 
     def migrate_database(self, cursor):
         """Adiciona novas colunas ao banco de dados existente"""
-        # Verificar quais colunas existem
+        # Verificar quais colunas existem em products
         cursor.execute('PRAGMA table_info(products)')
         columns = [column[1] for column in cursor.fetchall()]
 
@@ -72,6 +73,13 @@ class Database:
 
         if 'installment_day' not in columns:
             cursor.execute('ALTER TABLE products ADD COLUMN installment_day INTEGER')
+
+        # Verificar colunas em settings
+        cursor.execute('PRAGMA table_info(settings)')
+        settings_columns = [column[1] for column in cursor.fetchall()]
+
+        if 'salary' not in settings_columns:
+            cursor.execute('ALTER TABLE settings ADD COLUMN salary REAL DEFAULT 0')
     
     def process_image(self, image_path):
         """Redimensiona e converte imagem para BLOB"""
@@ -182,17 +190,42 @@ class Database:
         conn.commit()
         conn.close()
 
+    def get_salary(self):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute('SELECT salary FROM settings WHERE id=1')
+        result = cursor.fetchone()
+        salary = result[0] if result and result[0] else 0
+        conn.close()
+        return salary
+
+    def update_salary(self, salary):
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute('UPDATE settings SET salary=? WHERE id=1', (salary,))
+        conn.commit()
+        conn.close()
+
     def get_monthly_bills_total(self):
-        """Retorna o total de contas do mês (não pagas)"""
+        """Retorna o total de contas do mês (apenas 1 parcela de cada conta não paga)"""
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT SUM(price) FROM products
+            SELECT price, installments FROM products
             WHERE type='conta' AND purchased=0
         ''')
-        total = cursor.fetchone()[0]
+        bills = cursor.fetchall()
         conn.close()
-        return total if total else 0
+
+        # Calcular apenas 1 parcela de cada conta
+        total = 0
+        for bill in bills:
+            price = bill[0]
+            installments = bill[1] if bill[1] else 1
+            parcela = price / installments if installments > 0 else price
+            total += parcela
+
+        return total
 
     def get_products_by_type(self, item_type, show_purchased=True):
         """Retorna produtos filtrados por tipo"""
@@ -215,3 +248,54 @@ class Database:
         products = cursor.fetchall()
         conn.close()
         return products
+
+    def get_monthly_forecast(self):
+        """Retorna previsão de parcelas para os próximos meses"""
+        from datetime import datetime
+        from dateutil.relativedelta import relativedelta
+
+        conn = self.connect()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT price, installments, installment_day FROM products
+            WHERE type='conta' AND purchased=0
+        ''')
+        bills = cursor.fetchall()
+        conn.close()
+
+        if not bills:
+            return []
+
+        # Calcular parcelas por mês
+        current_date = datetime.now()
+        monthly_totals = {}
+
+        for bill in bills:
+            price = bill[0]
+            installments = bill[1] if bill[1] else 1
+            parcela = price / installments if installments > 0 else price
+
+            # Adicionar parcela para cada mês
+            for i in range(installments):
+                month_date = current_date + relativedelta(months=i)
+                month_key = month_date.strftime("%Y-%m")
+                month_name = month_date.strftime("%b/%Y")
+
+                if month_key not in monthly_totals:
+                    monthly_totals[month_key] = {'name': month_name, 'total': 0}
+
+                monthly_totals[month_key]['total'] += parcela
+
+        # Ordenar por data e converter para lista
+        sorted_months = sorted(monthly_totals.items())
+        forecast = [{'month': v['name'], 'total': v['total']} for k, v in sorted_months]
+
+        # Adicionar um mês a mais com R$ 0,00
+        if forecast:
+            last_month_date = current_date + relativedelta(months=len(sorted_months))
+            forecast.append({
+                'month': last_month_date.strftime("%b/%Y"),
+                'total': 0
+            })
+
+        return forecast
