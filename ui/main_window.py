@@ -115,31 +115,55 @@ class MainWindow(QMainWindow):
         
         scroll_area.setWidget(self.cards_container)
         main_layout.addWidget(scroll_area)
-        
+
+        # Footer com total de contas
+        footer = QFrame()
+        footer.setObjectName("footer")
+        footer.setFixedHeight(60)
+
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(30, 0, 30, 0)
+
+        footer_layout.addStretch()
+
+        self.bills_label = QLabel("Contas do Mês: R$ 0,00")
+        self.bills_label.setObjectName("billsTotal")
+
+        footer_layout.addWidget(self.bills_label)
+
+        main_layout.addWidget(footer)
+
         # Atualizar valor guardado
         self.update_saved_label()
+        self.update_bills_label()
     
     def update_saved_label(self):
         amount = self.db.get_saved_amount()
         self.saved_label.setText(f"Valor Guardado: R$ {amount:,.2f}")
         return amount
+
+    def update_bills_label(self):
+        total = self.db.get_monthly_bills_total()
+        self.bills_label.setText(f"Contas do Mês: R$ {total:,.2f}")
+        return total
     
     def load_products(self):
         # Limpar cards existentes
         self.flow_layout.clear_layout()
-        
+
         # Carregar produtos
         show_purchased = self.config.get_show_purchased()
         products = self.db.get_all_products(show_purchased)
         saved_amount = self.update_saved_label()
-        
+        self.update_bills_label()
+
         if not products:
             no_products = QLabel("Nenhum produto adicionado ainda.\nClique em 'Adicionar' para começar!")
             no_products.setObjectName("noProducts")
             no_products.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.cards_layout.insertWidget(0, no_products)
             return
-        
+
         # Criar cards
         for product in products:
             card = ProductCard(product, saved_amount)
@@ -147,7 +171,7 @@ class MainWindow(QMainWindow):
             card.remove_clicked.connect(self.remove_product)
             card.purchase_clicked.connect(self.toggle_purchase)
             card.link_clicked.connect(self.open_link)
-            
+
             self.flow_layout.addWidget(card)
     
     def add_product(self):
@@ -155,10 +179,14 @@ class MainWindow(QMainWindow):
         if dialog.exec():
             data = dialog.get_data()
             self.db.add_product(
-                data['name'],
-                data['price'],
-                data['link'],
-                data['image_path']
+                name=data['name'],
+                price=data['price'],
+                link=data['link'],
+                image_path=data['image_path'],
+                item_type=data['type'],
+                description=data.get('description'),
+                installments=data.get('installments'),
+                installment_day=data.get('installment_day')
             )
             self.load_products()
     
@@ -166,28 +194,36 @@ class MainWindow(QMainWindow):
         # Buscar produto
         products = self.db.get_all_products(True)
         product = next((p for p in products if p['id'] == product_id), None)
-        
+
         if product:
             dialog = EditProductDialog(product, self)
             if dialog.exec():
                 data = dialog.get_data()
-                
+
                 if data['keep_current_image']:
                     self.db.update_product(
-                        product_id,
-                        data['name'],
-                        data['price'],
-                        data['link']
+                        product_id=product_id,
+                        name=data['name'],
+                        price=data['price'],
+                        link=data['link'],
+                        item_type=data['type'],
+                        description=data.get('description'),
+                        installments=data.get('installments'),
+                        installment_day=data.get('installment_day')
                     )
                 else:
                     self.db.update_product(
-                        product_id,
-                        data['name'],
-                        data['price'],
-                        data['link'],
-                        data['image_path']
+                        product_id=product_id,
+                        name=data['name'],
+                        price=data['price'],
+                        link=data['link'],
+                        image_path=data['image_path'],
+                        item_type=data['type'],
+                        description=data.get('description'),
+                        installments=data.get('installments'),
+                        installment_day=data.get('installment_day')
                     )
-                
+
                 self.load_products()
     
     def remove_product(self, product_id):

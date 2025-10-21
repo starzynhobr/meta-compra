@@ -14,15 +14,21 @@ class ProductCard(QFrame):
         self.product = product
         self.saved_amount = saved_amount
         self.is_purchased = bool(product['purchased'])
-        
+        self.is_conta = product.get('type', 'meta') == 'conta'
+
         self.setObjectName("productCard")
         self.setFixedSize(280, 380)
-        
+
         self.setup_ui()
         self.setup_animations()
-        
+
         if self.is_purchased:
             self.setProperty("purchased", "true")
+            self.style().unpolish(self)
+            self.style().polish(self)
+
+        if self.is_conta:
+            self.setProperty("cardType", "conta")
             self.style().unpolish(self)
             self.style().polish(self)
     
@@ -65,62 +71,100 @@ class ProductCard(QFrame):
         
         layout.addWidget(image_container)
         
+        # Badge de tipo (para contas)
+        if self.is_conta:
+            type_badge = QLabel("CONTA")
+            type_badge.setObjectName("typeBadge")
+            type_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            type_badge.setFixedHeight(20)
+            layout.addWidget(type_badge)
+
         # Nome
         name_label = QLabel(self.product['name'])
         name_label.setObjectName("productName")
         name_label.setWordWrap(True)
         name_label.setMaximumHeight(40)
         layout.addWidget(name_label)
-        
+
         # Valor
-        value_label = QLabel(f"R$ {self.product['price']:,.2f}")
+        if self.is_conta and self.product.get('installments') and self.product.get('installments') > 1:
+            value_text = f"R$ {self.product['price']:,.2f} ({self.product['installments']}x)"
+        else:
+            value_text = f"R$ {self.product['price']:,.2f}"
+
+        value_label = QLabel(value_text)
         value_label.setObjectName("productPrice")
         layout.addWidget(value_label)
-        
-        # Barra de progresso
+
+        # Informação adicional para contas
+        if self.is_conta:
+            day = self.product.get('installment_day', 1)
+            info_label = QLabel(f"Vencimento: dia {day}")
+            info_label.setObjectName("billInfo")
+            layout.addWidget(info_label)
+
+        # Barra de progresso (apenas para metas)
         self.progress = QProgressBar()
         self.progress.setTextVisible(False)
         self.progress.setFixedHeight(8)
-        percentage = min(100, int((self.saved_amount / self.product['price']) * 100)) if self.product['price'] > 0 else 0
-        self.progress.setValue(percentage)
-        
-        if self.is_purchased:
+
+        if not self.is_conta:
+            percentage = min(100, int((self.saved_amount / self.product['price']) * 100)) if self.product['price'] > 0 else 0
+            self.progress.setValue(percentage)
+
+            if self.is_purchased:
+                self.progress.setVisible(False)
+
+            layout.addWidget(self.progress)
+        else:
             self.progress.setVisible(False)
-        
-        layout.addWidget(self.progress)
         
         # Botões
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(5)
         
-        # Botão de compra
-        can_buy = self.saved_amount >= self.product['price']
-        self.buy_btn = QPushButton("Link de Compra")
-        self.buy_btn.setObjectName("buyButton")
-        self.buy_btn.setProperty("enabled", "true" if can_buy else "false")
-        self.buy_btn.clicked.connect(lambda: self.link_clicked.emit(self.product['link']))
+        # Botão de compra/link
+        if self.is_conta:
+            # Para contas, apenas abrir link se houver
+            self.buy_btn = QPushButton("Ver Link")
+            self.buy_btn.setObjectName("buyButton")
+            self.buy_btn.setProperty("enabled", "true" if self.product.get('link') else "false")
+            self.buy_btn.clicked.connect(lambda: self.link_clicked.emit(self.product['link']))
+        else:
+            # Para metas, mostrar se pode comprar
+            can_buy = self.saved_amount >= self.product['price']
+            self.buy_btn = QPushButton("Link de Compra")
+            self.buy_btn.setObjectName("buyButton")
+            self.buy_btn.setProperty("enabled", "true" if can_buy else "false")
+            self.buy_btn.clicked.connect(lambda: self.link_clicked.emit(self.product['link']))
+
         btn_layout.addWidget(self.buy_btn)
         
         # Botões de ação
         action_layout = QHBoxLayout()
         action_layout.setSpacing(5)
-        
-        cart_btn = QPushButton("🛒")
-        cart_btn.setObjectName("iconButton")
-        cart_btn.setFixedSize(35, 35)
-        cart_btn.clicked.connect(lambda: self.purchase_clicked.emit(self.product['id']))
-        
+
+        # Botão de marcar como pago/comprado
+        if self.is_conta:
+            toggle_btn = QPushButton("✓")  # Check para contas
+        else:
+            toggle_btn = QPushButton("🛒")  # Carrinho para metas
+
+        toggle_btn.setObjectName("iconButton")
+        toggle_btn.setFixedSize(35, 35)
+        toggle_btn.clicked.connect(lambda: self.purchase_clicked.emit(self.product['id']))
+
         edit_btn = QPushButton("✏")
         edit_btn.setObjectName("iconButton")
         edit_btn.setFixedSize(35, 35)
         edit_btn.clicked.connect(lambda: self.edit_clicked.emit(self.product['id']))
-        
+
         remove_btn = QPushButton("🗑")
         remove_btn.setObjectName("iconButton")
         remove_btn.setFixedSize(35, 35)
         remove_btn.clicked.connect(lambda: self.remove_clicked.emit(self.product['id']))
-        
-        action_layout.addWidget(cart_btn)
+
+        action_layout.addWidget(toggle_btn)
         action_layout.addWidget(edit_btn)
         action_layout.addWidget(remove_btn)
         

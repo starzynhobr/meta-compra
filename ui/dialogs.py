@@ -1,28 +1,44 @@
-from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
+from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QFileDialog, QMessageBox,
-                             QCheckBox, QDoubleSpinBox)
+                             QCheckBox, QDoubleSpinBox, QComboBox, QSpinBox,
+                             QTextEdit, QWidget)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap
 
 class AddProductDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Adicionar Produto")
+        self.setWindowTitle("Adicionar Item")
         self.setModal(True)
-        self.setFixedSize(400, 450)
-        
+        self.setMinimumSize(400, 500)
+
         self.image_path = None
         self.setup_ui()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
-        
+
+        # Tipo (Meta ou Conta)
+        layout.addWidget(QLabel("Tipo:"))
+        self.type_combo = QComboBox()
+        self.type_combo.addItems(["Meta de Compra", "Conta do Mês"])
+        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
+        layout.addWidget(self.type_combo)
+
         # Nome
-        layout.addWidget(QLabel("Nome do Produto:"))
+        layout.addWidget(QLabel("Nome:"))
         self.name_input = QLineEdit()
         layout.addWidget(self.name_input)
-        
+
+        # Descrição (apenas para contas)
+        self.desc_label = QLabel("Descrição:")
+        layout.addWidget(self.desc_label)
+        self.desc_input = QTextEdit()
+        self.desc_input.setMaximumHeight(80)
+        self.desc_input.setPlaceholderText("Descrição da conta (opcional)")
+        layout.addWidget(self.desc_input)
+
         # Preço
         layout.addWidget(QLabel("Valor (R$):"))
         self.price_input = QDoubleSpinBox()
@@ -30,42 +46,95 @@ class AddProductDialog(QDialog):
         self.price_input.setDecimals(2)
         self.price_input.setPrefix("R$ ")
         layout.addWidget(self.price_input)
-        
+
+        # Campos específicos para contas
+        self.installments_label = QLabel("Parcelas:")
+        layout.addWidget(self.installments_label)
+
+        installments_layout = QHBoxLayout()
+        self.installments_input = QSpinBox()
+        self.installments_input.setMinimum(1)
+        self.installments_input.setMaximum(99)
+        self.installments_input.setValue(1)
+        self.installments_input.setPrefix("x ")
+        installments_layout.addWidget(self.installments_input)
+        installments_layout.addStretch()
+        layout.addLayout(installments_layout)
+
+        self.day_label = QLabel("Dia do Pagamento:")
+        layout.addWidget(self.day_label)
+
+        day_layout = QHBoxLayout()
+        self.day_input = QSpinBox()
+        self.day_input.setMinimum(1)
+        self.day_input.setMaximum(31)
+        self.day_input.setValue(1)
+        day_layout.addWidget(self.day_input)
+        day_layout.addStretch()
+        layout.addLayout(day_layout)
+
         # Link
-        layout.addWidget(QLabel("Link de Compra:"))
+        self.link_label = QLabel("Link:")
+        layout.addWidget(self.link_label)
         self.link_input = QLineEdit()
         self.link_input.setPlaceholderText("https://...")
         layout.addWidget(self.link_input)
-        
+
         # Imagem
-        layout.addWidget(QLabel("Imagem:"))
-        
+        self.image_section_label = QLabel("Imagem (opcional):")
+        layout.addWidget(self.image_section_label)
+
         image_layout = QHBoxLayout()
-        self.image_label = QLabel("Nenhuma imagem selecionada")
+        self.image_label = QLabel("Nenhuma imagem")
         self.image_label.setFixedSize(100, 100)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet("border: 1px dashed #555; border-radius: 5px;")
-        
-        image_btn = QPushButton("Selecionar Imagem")
+
+        image_btn = QPushButton("Selecionar")
         image_btn.clicked.connect(self.select_image)
-        
+
         image_layout.addWidget(self.image_label)
         image_layout.addWidget(image_btn)
         layout.addLayout(image_layout)
-        
+
         # Botões
         btn_layout = QHBoxLayout()
-        
+
         save_btn = QPushButton("Salvar")
         save_btn.clicked.connect(self.validate_and_accept)
-        
+
         cancel_btn = QPushButton("Cancelar")
         cancel_btn.clicked.connect(self.reject)
-        
+
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        
+
         layout.addLayout(btn_layout)
+
+        # Inicializar estado
+        self.on_type_changed(0)
+
+    def on_type_changed(self, index):
+        """Mostra/esconde campos baseado no tipo selecionado"""
+        is_conta = index == 1
+
+        # Campos específicos de conta
+        self.desc_label.setVisible(is_conta)
+        self.desc_input.setVisible(is_conta)
+        self.installments_label.setVisible(is_conta)
+        self.installments_input.setVisible(is_conta)
+        self.day_label.setVisible(is_conta)
+        self.day_input.setVisible(is_conta)
+
+        # Ajustar labels
+        if is_conta:
+            self.link_label.setText("Link (opcional):")
+            self.image_section_label.setText("Imagem (opcional):")
+        else:
+            self.link_label.setText("Link de Compra:")
+            self.image_section_label.setText("Imagem:")
+
+        self.adjustSize()
     
     def select_image(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -82,47 +151,68 @@ class AddProductDialog(QDialog):
     
     def validate_and_accept(self):
         if not self.name_input.text().strip():
-            QMessageBox.warning(self, "Atenção", "Por favor, insira o nome do produto.")
+            QMessageBox.warning(self, "Atenção", "Por favor, insira o nome.")
             return
-        
+
         if self.price_input.value() <= 0:
             QMessageBox.warning(self, "Atenção", "Por favor, insira um valor válido.")
             return
-        
+
         self.accept()
-    
+
     def get_data(self):
+        is_conta = self.type_combo.currentIndex() == 1
+
         return {
+            'type': 'conta' if is_conta else 'meta',
             'name': self.name_input.text().strip(),
             'price': self.price_input.value(),
             'link': self.link_input.text().strip(),
-            'image_path': self.image_path
+            'image_path': self.image_path,
+            'description': self.desc_input.toPlainText().strip() if is_conta else None,
+            'installments': self.installments_input.value() if is_conta else None,
+            'installment_day': self.day_input.value() if is_conta else None
         }
 
 
 class EditProductDialog(QDialog):
     def __init__(self, product, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Editar Produto")
+        self.setWindowTitle("Editar Item")
         self.setModal(True)
-        self.setFixedSize(400, 450)
-        
+        self.setMinimumSize(400, 500)
+
         self.product = product
         self.image_path = None
         self.keep_current_image = True
-        
+
         self.setup_ui()
         self.load_data()
-    
+
     def setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(15)
-        
+
+        # Tipo (Meta ou Conta)
+        layout.addWidget(QLabel("Tipo:"))
+        self.type_combo = QComboBox()
+        self.type_combo.addItems(["Meta de Compra", "Conta do Mês"])
+        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
+        layout.addWidget(self.type_combo)
+
         # Nome
-        layout.addWidget(QLabel("Nome do Produto:"))
+        layout.addWidget(QLabel("Nome:"))
         self.name_input = QLineEdit()
         layout.addWidget(self.name_input)
-        
+
+        # Descrição (apenas para contas)
+        self.desc_label = QLabel("Descrição:")
+        layout.addWidget(self.desc_label)
+        self.desc_input = QTextEdit()
+        self.desc_input.setMaximumHeight(80)
+        self.desc_input.setPlaceholderText("Descrição da conta (opcional)")
+        layout.addWidget(self.desc_input)
+
         # Preço
         layout.addWidget(QLabel("Valor (R$):"))
         self.price_input = QDoubleSpinBox()
@@ -130,47 +220,107 @@ class EditProductDialog(QDialog):
         self.price_input.setDecimals(2)
         self.price_input.setPrefix("R$ ")
         layout.addWidget(self.price_input)
-        
+
+        # Campos específicos para contas
+        self.installments_label = QLabel("Parcelas:")
+        layout.addWidget(self.installments_label)
+
+        installments_layout = QHBoxLayout()
+        self.installments_input = QSpinBox()
+        self.installments_input.setMinimum(1)
+        self.installments_input.setMaximum(99)
+        self.installments_input.setValue(1)
+        self.installments_input.setPrefix("x ")
+        installments_layout.addWidget(self.installments_input)
+        installments_layout.addStretch()
+        layout.addLayout(installments_layout)
+
+        self.day_label = QLabel("Dia do Pagamento:")
+        layout.addWidget(self.day_label)
+
+        day_layout = QHBoxLayout()
+        self.day_input = QSpinBox()
+        self.day_input.setMinimum(1)
+        self.day_input.setMaximum(31)
+        self.day_input.setValue(1)
+        day_layout.addWidget(self.day_input)
+        day_layout.addStretch()
+        layout.addLayout(day_layout)
+
         # Link
-        layout.addWidget(QLabel("Link de Compra:"))
+        self.link_label = QLabel("Link:")
+        layout.addWidget(self.link_label)
         self.link_input = QLineEdit()
         layout.addWidget(self.link_input)
-        
+
         # Imagem
-        layout.addWidget(QLabel("Imagem:"))
-        
+        self.image_section_label = QLabel("Imagem:")
+        layout.addWidget(self.image_section_label)
+
         image_layout = QHBoxLayout()
         self.image_label = QLabel()
         self.image_label.setFixedSize(100, 100)
         self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_label.setStyleSheet("border: 1px dashed #555; border-radius: 5px;")
-        
+
         image_btn = QPushButton("Alterar Imagem")
         image_btn.clicked.connect(self.select_image)
-        
+
         image_layout.addWidget(self.image_label)
         image_layout.addWidget(image_btn)
         layout.addLayout(image_layout)
-        
+
         # Botões
         btn_layout = QHBoxLayout()
-        
+
         save_btn = QPushButton("Salvar")
         save_btn.clicked.connect(self.validate_and_accept)
-        
+
         cancel_btn = QPushButton("Cancelar")
         cancel_btn.clicked.connect(self.reject)
-        
+
         btn_layout.addWidget(save_btn)
         btn_layout.addWidget(cancel_btn)
-        
+
         layout.addLayout(btn_layout)
+
+    def on_type_changed(self, index):
+        """Mostra/esconde campos baseado no tipo selecionado"""
+        is_conta = index == 1
+
+        # Campos específicos de conta
+        self.desc_label.setVisible(is_conta)
+        self.desc_input.setVisible(is_conta)
+        self.installments_label.setVisible(is_conta)
+        self.installments_input.setVisible(is_conta)
+        self.day_label.setVisible(is_conta)
+        self.day_input.setVisible(is_conta)
+
+        # Ajustar labels
+        if is_conta:
+            self.link_label.setText("Link (opcional):")
+            self.image_section_label.setText("Imagem (opcional):")
+        else:
+            self.link_label.setText("Link de Compra:")
+            self.image_section_label.setText("Imagem:")
+
+        self.adjustSize()
     
     def load_data(self):
+        # Definir tipo
+        item_type = self.product.get('type', 'meta')
+        self.type_combo.setCurrentIndex(1 if item_type == 'conta' else 0)
+
         self.name_input.setText(self.product['name'])
         self.price_input.setValue(self.product['price'])
-        self.link_input.setText(self.product['link'] or '')
-        
+        self.link_input.setText(self.product.get('link') or '')
+
+        # Campos específicos de conta
+        if item_type == 'conta':
+            self.desc_input.setPlainText(self.product.get('description') or '')
+            self.installments_input.setValue(self.product.get('installments') or 1)
+            self.day_input.setValue(self.product.get('installment_day') or 1)
+
         if self.product['image']:
             pixmap = QPixmap()
             pixmap.loadFromData(self.product['image'])
@@ -196,22 +346,28 @@ class EditProductDialog(QDialog):
     
     def validate_and_accept(self):
         if not self.name_input.text().strip():
-            QMessageBox.warning(self, "Atenção", "Por favor, insira o nome do produto.")
+            QMessageBox.warning(self, "Atenção", "Por favor, insira o nome.")
             return
-        
+
         if self.price_input.value() <= 0:
             QMessageBox.warning(self, "Atenção", "Por favor, insira um valor válido.")
             return
-        
+
         self.accept()
-    
+
     def get_data(self):
+        is_conta = self.type_combo.currentIndex() == 1
+
         return {
+            'type': 'conta' if is_conta else 'meta',
             'name': self.name_input.text().strip(),
             'price': self.price_input.value(),
             'link': self.link_input.text().strip(),
             'image_path': self.image_path,
-            'keep_current_image': self.keep_current_image
+            'keep_current_image': self.keep_current_image,
+            'description': self.desc_input.toPlainText().strip() if is_conta else None,
+            'installments': self.installments_input.value() if is_conta else None,
+            'installment_day': self.day_input.value() if is_conta else None
         }
 
 
