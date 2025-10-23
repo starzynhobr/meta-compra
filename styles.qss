@@ -155,9 +155,10 @@ QLabel#billInfo {
 QLabel#checkIcon {
     background-color: #4CAF50;
     color: white;
-    border-radius: 15px;
-    font-size: 18px;
+    border-radius: 14px;
+    font-size: 16px;
     font-weight: bold;
+    border: 2px solid #242424;
 }
 
 /* Nome do Produto */
@@ -165,7 +166,7 @@ QLabel#productName {
     font-size: 13px;
     font-weight: bold;
     color: #f0f0f0;
-    max-height: 40px;
+    padding-top: 2px;
 }
 
 /* Preço do Produto */
@@ -224,12 +225,12 @@ QPushButton#iconButton {
     background-color: #2a2a2a;
     border: 1px solid #444;
     border-radius: 5px;
-    font-size: 18px;
+    font-size: 16px;
     padding: 0px;
-    min-width: 35px;
-    max-width: 35px;
-    min-height: 35px;
-    max-height: 35px;
+    min-width: 30px;
+    max-width: 30px;
+    min-height: 30px;
+    max-height: 30px;
 }
 
 QPushButton#iconButton:hover {
@@ -480,4 +481,66 @@ QLabel#noForecast {
     font-size: 11px;
     color: #666;
     padding: 20px;
+}
+
+/* Botão de Seleção */
+QPushButton#selectButton {
+    background-color: #2a2a2a;
+    border: 2px solid #444;
+    border-radius: 5px;
+    font-size: 16px;
+    padding: 0px;
+    min-width: 30px;
+    max-width: 30px;
+    min-height: 30px;
+    max-height: 30px;
+    color: #666;
+}
+
+QPushButton#selectButton:hover {
+    background-color: #333;
+    border-color: #555;
+    color: #999;
+}
+
+QPushButton#selectButton[selected="true"] {
+    background-color: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+}
+
+QPushButton#selectButton[selected="true"]:hover {
+    background-color: #45a049;
+    border-color: #45a049;
+}
+
+/* Card Selecionado */
+QFrame#productCard[selected="true"] {
+    border: 2px solid #4CAF50;
+    background-color: #2a2a2a;
+}
+
+/* Painel de Seleção */
+QFrame#selectedPanel {
+    background-color: #2a2a2a;
+    border: 1px solid #4CAF50;
+    border-radius: 8px;
+    padding: 5px;
+}
+
+QLabel#selectedIcon {
+    font-size: 18px;
+    color: #4CAF50;
+}
+
+QLabel#selectedCount {
+    font-size: 13px;
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+QLabel#selectedTotal {
+    font-size: 14px;
+    font-weight: bold;
+    color: #4CAF50;
 }

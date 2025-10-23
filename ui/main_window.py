@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QGraphicsOpacityEffect)
 from PyQt6.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve, QRect, QPoint
 from PyQt6.QtGui import QDesktopServices
-from ui.card_widget import ProductCard
+from ui.card_widget import ProductCard, format_brl
 from ui.dialogs import AddProductDialog, EditProductDialog, EditSavedAmountDialog, EditSalaryDialog, SettingsDialog
 from database import Database
 
@@ -33,11 +33,12 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.db = db
         self.config = config
-        
+        self.selected_items = {}  # Dicionário para rastrear itens selecionados {id: price}
+
         self.setWindowTitle("Meta de Compra")
         self.setMinimumSize(1000, 550)
         self.resize(1400, 750)
-        
+
         self.setup_ui()
         self.load_products()
     
@@ -213,7 +214,7 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(content_container)
 
-        # Footer com total de contas e saldo
+        # Footer com total de contas, saldo e somatório de selecionados
         footer = QFrame()
         footer.setObjectName("footer")
         footer.setFixedHeight(50)
@@ -225,6 +226,31 @@ class MainWindow(QMainWindow):
         self.bills_label.setObjectName("billsTotal")
 
         footer_layout.addWidget(self.bills_label)
+        footer_layout.addStretch()
+
+        # Painel de somatório de itens selecionados
+        self.selected_panel = QFrame()
+        self.selected_panel.setObjectName("selectedPanel")
+        self.selected_panel.setVisible(False)  # Oculto por padrão
+
+        selected_layout = QHBoxLayout(self.selected_panel)
+        selected_layout.setContentsMargins(15, 5, 15, 5)
+        selected_layout.setSpacing(10)
+
+        selected_icon = QLabel("☑")
+        selected_icon.setObjectName("selectedIcon")
+
+        self.selected_label = QLabel("Itens selecionados: 0")
+        self.selected_label.setObjectName("selectedCount")
+
+        self.selected_total_label = QLabel("Total: R$ 0,00")
+        self.selected_total_label.setObjectName("selectedTotal")
+
+        selected_layout.addWidget(selected_icon)
+        selected_layout.addWidget(self.selected_label)
+        selected_layout.addWidget(self.selected_total_label)
+
+        footer_layout.addWidget(self.selected_panel)
         footer_layout.addStretch()
 
         self.balance_label = QLabel("Saldo: R$ 0,00")
@@ -242,12 +268,12 @@ class MainWindow(QMainWindow):
 
     def update_saved_label(self):
         amount = self.db.get_saved_amount()
-        self.saved_label.setText(f"Valor Guardado: R$ {amount:,.2f}")
+        self.saved_label.setText(f"Valor Guardado: {format_brl(amount)}")
         return amount
 
     def update_salary_label(self):
         salary = self.db.get_salary()
-        self.salary_label.setText(f"Salário: R$ {salary:,.2f}")
+        self.salary_label.setText(f"Salário: {format_brl(salary)}")
         return salary
 
     def update_bills_and_balance(self):
@@ -255,7 +281,7 @@ class MainWindow(QMainWindow):
         salary = self.db.get_salary()
         balance = salary - bills_total
 
-        self.bills_label.setText(f"Contas do Mês: R$ {bills_total:,.2f}")
+        self.bills_label.setText(f"Contas do Mês: {format_brl(bills_total)}")
 
         # Definir cor do saldo baseado em positivo/negativo
         if balance >= 0:
@@ -263,7 +289,7 @@ class MainWindow(QMainWindow):
         else:
             self.balance_label.setProperty("positive", "false")
 
-        self.balance_label.setText(f"Saldo: R$ {balance:,.2f}")
+        self.balance_label.setText(f"Saldo: {format_brl(balance)}")
         self.balance_label.style().unpolish(self.balance_label)
         self.balance_label.style().polish(self.balance_label)
 
@@ -299,7 +325,7 @@ class MainWindow(QMainWindow):
             month_label = QLabel(month_data['month'])
             month_label.setObjectName("forecastMonth")
 
-            value_label = QLabel(f"R$ {month_data['total']:,.2f}")
+            value_label = QLabel(format_brl(month_data['total']))
             value_label.setObjectName("forecastValue")
 
             # Se for zero, marcar diferente
@@ -320,6 +346,10 @@ class MainWindow(QMainWindow):
         # Limpar cards existentes
         self.metas_flow_layout.clear_layout()
         self.contas_flow_layout.clear_layout()
+
+        # Limpar seleção anterior
+        self.selected_items.clear()
+        self.update_selected_panel()
 
         # Carregar produtos
         show_purchased = self.config.get_show_purchased()
@@ -358,6 +388,7 @@ class MainWindow(QMainWindow):
                 card.remove_clicked.connect(self.remove_product)
                 card.purchase_clicked.connect(self.toggle_purchase)
                 card.link_clicked.connect(self.open_link)
+                card.selection_changed.connect(self.on_selection_changed)
                 self.metas_flow_layout.addWidget(card)
 
         # Criar cards de contas
@@ -373,6 +404,7 @@ class MainWindow(QMainWindow):
                 card.remove_clicked.connect(self.remove_product)
                 card.purchase_clicked.connect(self.toggle_purchase)
                 card.link_clicked.connect(self.open_link)
+                card.selection_changed.connect(self.on_selection_changed)
                 self.contas_flow_layout.addWidget(card)
     
     def add_product(self):
@@ -500,3 +532,24 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self.config, self)
         if dialog.exec():
             self.load_products()
+
+    def on_selection_changed(self, product_id, is_selected, price):
+        """Atualiza o painel de somatório quando um card é selecionado/deselecionado"""
+        if is_selected:
+            self.selected_items[product_id] = price
+        else:
+            self.selected_items.pop(product_id, None)
+
+        self.update_selected_panel()
+
+    def update_selected_panel(self):
+        """Atualiza o painel de somatório com os itens selecionados"""
+        count = len(self.selected_items)
+        total = sum(self.selected_items.values())
+
+        if count > 0:
+            self.selected_panel.setVisible(True)
+            self.selected_label.setText(f"Itens selecionados: {count}")
+            self.selected_total_label.setText(f"Total: {format_brl(total)}")
+        else:
+            self.selected_panel.setVisible(False)
