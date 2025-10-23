@@ -207,23 +207,19 @@ class Database:
         conn.close()
 
     def get_monthly_bills_total(self):
-        """Retorna o total de contas do mês (apenas 1 parcela de cada conta não paga)"""
+        """Retorna o total de contas do mês (soma das parcelas mensais)"""
         conn = self.connect()
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT price, installments FROM products
+            SELECT price FROM products
             WHERE type='conta' AND purchased=0
         ''')
         bills = cursor.fetchall()
         conn.close()
 
-        # Calcular apenas 1 parcela de cada conta
-        total = 0
-        for bill in bills:
-            price = bill[0]
-            installments = bill[1] if bill[1] else 1
-            parcela = price / installments if installments > 0 else price
-            total += parcela
+        # O price já é o valor da parcela mensal
+        # Se tiver 36x de R$ 631, o price é R$ 631 (valor mensal)
+        total = sum(bill[0] for bill in bills)
 
         return total
 
@@ -271,9 +267,8 @@ class Database:
         monthly_totals = {}
 
         for bill in bills:
-            price = bill[0]
+            price = bill[0]  # price já é o valor da parcela mensal
             installments = bill[1] if bill[1] else 1
-            parcela = price / installments if installments > 0 else price
 
             # Adicionar parcela para cada mês
             for i in range(installments):
@@ -284,7 +279,7 @@ class Database:
                 if month_key not in monthly_totals:
                     monthly_totals[month_key] = {'name': month_name, 'total': 0}
 
-                monthly_totals[month_key]['total'] += parcela
+                monthly_totals[month_key]['total'] += price
 
         # Ordenar por data e converter para lista
         sorted_months = sorted(monthly_totals.items())

@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python main.py:*)"
+      "Bash(python main.py:*)",
+      "Bash(python test_db.py:*)",
+      "Bash(python:*)",
+      "Read(//c/Users/stz/AppData/Local/MetaDeCompra/**)",
+      "Read(//c/Users/stz/**)",
+      "Bash(where:*)",
+      "Bash(.venv/Scripts/python:*)",
+      "Bash(.venv/Scripts/python.exe main.py)",
+      "Bash(timeout 3 .venv/Scripts/python.exe:*)",
+      "Bash(.venv/Scripts/pip show:*)",
+      "Bash(.venv/Scripts/pip.exe show:*)",
+      "Bash(.venv/Scripts/python.exe -m pip:*)",
+      "Bash(.venv/Scripts/python.exe:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
                              QLabel, QPushButton, QScrollArea, QMessageBox, QFrame, QTabWidget,
                              QGraphicsOpacityEffect)
 from PyQt6.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve, QRect, QPoint
@@ -6,26 +6,6 @@ from PyQt6.QtGui import QDesktopServices
 from ui.card_widget import ProductCard, format_brl
 from ui.dialogs import AddProductDialog, EditProductDialog, EditSavedAmountDialog, EditSalaryDialog, SettingsDialog
 from database import Database
-
-
-class FlowLayout(QHBoxLayout):
-    """Layout que organiza widgets em flow horizontal com wrap"""
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setSpacing(20)
-        self.setContentsMargins(20, 20, 20, 20)
-        self._items = []
-    
-    def addWidget(self, widget):
-        self._items.append(widget)
-        super().addWidget(widget)
-    
-    def clear_layout(self):
-        while self.count():
-            item = self.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        self._items.clear()
 
 
 class MainWindow(QMainWindow):
@@ -140,7 +120,11 @@ class MainWindow(QMainWindow):
 
         self.metas_flow_container = QWidget()
         self.metas_flow_container.setObjectName("flowContainer")
-        self.metas_flow_layout = FlowLayout(self.metas_flow_container)
+        self.metas_flow_layout = QGridLayout()
+        self.metas_flow_layout.setSpacing(20)
+        self.metas_flow_layout.setContentsMargins(20, 20, 20, 20)
+        self.metas_flow_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.metas_flow_container.setLayout(self.metas_flow_layout)
 
         metas_container_layout.addWidget(self.metas_flow_container)
         metas_container_layout.addStretch()
@@ -165,7 +149,11 @@ class MainWindow(QMainWindow):
 
         self.contas_flow_container = QWidget()
         self.contas_flow_container.setObjectName("flowContainer")
-        self.contas_flow_layout = FlowLayout(self.contas_flow_container)
+        self.contas_flow_layout = QGridLayout()
+        self.contas_flow_layout.setSpacing(20)
+        self.contas_flow_layout.setContentsMargins(20, 20, 20, 20)
+        self.contas_flow_layout.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.contas_flow_container.setLayout(self.contas_flow_layout)
 
         contas_container_layout.addWidget(self.contas_flow_container)
         contas_container_layout.addStretch()
@@ -344,8 +332,15 @@ class MainWindow(QMainWindow):
 
     def load_products(self):
         # Limpar cards existentes
-        self.metas_flow_layout.clear_layout()
-        self.contas_flow_layout.clear_layout()
+        while self.metas_flow_layout.count():
+            item = self.metas_flow_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        while self.contas_flow_layout.count():
+            item = self.contas_flow_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
         # Limpar seleção anterior
         self.selected_items.clear()
@@ -375,6 +370,9 @@ class MainWindow(QMainWindow):
             self.metas_container.layout().insertWidget(0, no_products)
             return
 
+        # Calcular quantos cards cabem por linha (largura do card ~220px incluindo espaçamento)
+        cols_per_row = max(1, (self.width() - 100) // 220)
+
         # Criar cards de metas
         if not metas:
             no_metas = QLabel("Nenhuma meta cadastrada")
@@ -382,14 +380,16 @@ class MainWindow(QMainWindow):
             no_metas.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.metas_container.layout().insertWidget(0, no_metas)
         else:
-            for product in metas:
+            for idx, product in enumerate(metas):
                 card = ProductCard(product, saved_amount)
                 card.edit_clicked.connect(self.edit_product)
                 card.remove_clicked.connect(self.remove_product)
                 card.purchase_clicked.connect(self.toggle_purchase)
                 card.link_clicked.connect(self.open_link)
                 card.selection_changed.connect(self.on_selection_changed)
-                self.metas_flow_layout.addWidget(card)
+                row = idx // cols_per_row
+                col = idx % cols_per_row
+                self.metas_flow_layout.addWidget(card, row, col)
 
         # Criar cards de contas
         if not contas:
@@ -398,14 +398,16 @@ class MainWindow(QMainWindow):
             no_contas.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.contas_container.layout().insertWidget(0, no_contas)
         else:
-            for product in contas:
+            for idx, product in enumerate(contas):
                 card = ProductCard(product, saved_amount)
                 card.edit_clicked.connect(self.edit_product)
                 card.remove_clicked.connect(self.remove_product)
                 card.purchase_clicked.connect(self.toggle_purchase)
                 card.link_clicked.connect(self.open_link)
                 card.selection_changed.connect(self.on_selection_changed)
-                self.contas_flow_layout.addWidget(card)
+                row = idx // cols_per_row
+                col = idx % cols_per_row
+                self.contas_flow_layout.addWidget(card, row, col)
     
     def add_product(self):
         dialog = AddProductDialog(self)
@@ -514,6 +516,8 @@ class MainWindow(QMainWindow):
             self.sidebar_fade.setStartValue(0.0)
             self.sidebar_fade.setEndValue(1.0)
             self.sidebar_fade.setEasingCurve(QEasingCurve.Type.OutCubic)
+            # Remover effect após animação para evitar problemas de renderização
+            self.sidebar_fade.finished.connect(lambda: self.sidebar.setGraphicsEffect(None))
             self.sidebar_fade.start()
         else:
             # Ocultar sidebar
@@ -525,7 +529,7 @@ class MainWindow(QMainWindow):
             self.sidebar_fade.setStartValue(1.0)
             self.sidebar_fade.setEndValue(0.0)
             self.sidebar_fade.setEasingCurve(QEasingCurve.Type.InCubic)
-            self.sidebar_fade.finished.connect(lambda: self.sidebar.setVisible(False))
+            self.sidebar_fade.finished.connect(lambda: (self.sidebar.setVisible(False), self.sidebar.setGraphicsEffect(None)))
             self.sidebar_fade.start()
 
     def open_settings(self):

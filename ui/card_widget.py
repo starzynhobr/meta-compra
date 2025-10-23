@@ -215,6 +215,9 @@ class ProductCard(QFrame):
         self.fade_in.setEndValue(1.0)
         self.fade_in.setEasingCurve(QEasingCurve.Type.OutCubic)
 
+        # Remover o effect após a animação para evitar problemas de renderização
+        self.fade_in.finished.connect(lambda: self.setGraphicsEffect(None))
+
         # Iniciar animação
         self.fade_in.start()
         
